@@ -1,0 +1,12 @@
+# PocketBase data directory (SQLite db, logs, uploaded files)
+pb_data/
+
+# Built binary
+/backend
+*.db
+*.db-shm
+*.db-wal
+
+# Env files
+.env
+.env.local

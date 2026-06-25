@@ -1,0 +1,334 @@
+openapi: 3.0.3
+info:
+  title: Kreach Backend API
+  version: "1.0.0"
+  description: >
+    REST API for Kreach. Built on PocketBase embedded as a Go library (embedded
+    SQLite). Handles auth, projects, email templates, email sending (via a
+    user-provided Resend key that is never stored), and per-user send/audit logs.
+    All data endpoints are owner-scoped and require a Bearer JWT.
+servers:
+  - url: http://127.0.0.1:8090
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Projects
+  - name: Templates
+  - name: Emails
+  - name: Logs
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "200": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user profile
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/projects:
+    get:
+      tags: [Projects]
+      summary: List own projects
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Project" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Project" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/projects/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Projects]
+      summary: Get an owned project
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Project" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Projects]
+      summary: Update an owned project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Project" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Projects]
+      summary: Delete an owned project
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/templates:
+    get:
+      tags: [Templates]
+      summary: List own templates
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Template" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Templates]
+      summary: Create / store a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TemplateRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/templates/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Templates]
+      summary: Get an owned template
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Templates]
+      summary: Update an owned template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TemplateRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Templates]
+      summary: Delete an owned template
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/emails/send:
+    post:
+      tags: [Emails]
+      summary: Send an email via Resend (rate-limited)
+      description: >
+        Sends an email using the caller-provided Resend API key. Rate limits:
+        at least 600ms between sends and at most 100 sends per user per day.
+        The Resend key is never stored. Failed deliveries are still logged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SendEmailRequest" }
+      responses:
+        "200": { description: Sent, content: { application/json: { schema: { $ref: "#/components/schemas/SendEmailResponse" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429":
+          description: Rate limit exceeded (600ms spacing or 100/day cap)
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying (spacing limit only)
+              schema: { type: integer }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "500":
+          description: Resend delivery failed (a failed send_log is recorded)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /api/logs/sends:
+    get:
+      tags: [Logs]
+      summary: List own email send logs
+      parameters:
+        - { name: recipient, in: query, required: false, schema: { type: string, format: email } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SendLog" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/logs/audit:
+    get:
+      tags: [Logs]
+      summary: List own audit trail
+      parameters:
+        - { name: recipient, in: query, required: false, schema: { type: string, format: email } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AuditLog" } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Invalid request
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: Missing or invalid auth token
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Record not found or not owned by the caller
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        status: { type: integer, example: 400 }
+        message: { type: string, example: "invalid request body" }
+        data: { type: object }
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        passwordConfirm: { type: string }
+        name: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        record: { $ref: "#/components/schemas/User" }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        verified: { type: boolean }
+        created: { type: string }
+        updated: { type: string }
+    ProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        owner: { type: string, description: "user id" }
+        created: { type: string }
+        updated: { type: string }
+    TemplateRequest:
+      type: object
+      required: [name, body]
+      properties:
+        name: { type: string }
+        subject: { type: string }
+        body: { type: string, description: "HTML body" }
+        project: { type: string, description: "optional owned project id" }
+    Template:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        owner: { type: string }
+        project: { type: string }
+        created: { type: string }
+        updated: { type: string }
+    SendEmailRequest:
+      type: object
+      required: [to, html, resend_api_key]
+      properties:
+        to: { type: string, format: email }
+        subject: { type: string }
+        html: { type: string }
+        resend_api_key: { type: string, description: "Used for delivery only; never stored" }
+        from: { type: string, description: "Optional sender override; defaults to RESEND_FROM" }
+        template: { type: string, description: "Optional owned template id (for logging)" }
+        project: { type: string, description: "Optional owned project id (for logging)" }
+    SendEmailResponse:
+      type: object
+      properties:
+        status: { type: string, example: sent }
+        provider_id: { type: string }
+        send_log: { type: string, description: "send_logs record id" }
+    SendLog:
+      type: object
+      properties:
+        id: { type: string }
+        owner: { type: string }
+        recipient: { type: string, format: email }
+        subject: { type: string }
+        template: { type: string }
+        project: { type: string }
+        status: { type: string, enum: [queued, sent, failed] }
+        error: { type: string }
+        provider_id: { type: string }
+        created: { type: string }
+    AuditLog:
+      type: object
+      properties:
+        id: { type: string }
+        user: { type: string }
+        action: { type: string, example: email.send }
+        resource: { type: string }
+        recipient: { type: string }
+        ip: { type: string }
+        details: { type: object }
+        created: { type: string }
+
+security:
+  - bearerAuth: []
