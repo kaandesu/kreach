@@ -1,5 +1,7 @@
 # Kreach
 
+Kaan's Outreach app
+
 A monorepo with two independent services:
 
 - **frontend** — Vite React app · port `3000` · [`frontend/`](frontend)

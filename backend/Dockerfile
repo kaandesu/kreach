@@ -27,6 +27,7 @@ WORKDIR /app
 
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=builder /out/server /app/server
+RUN mkdir -p /app/pb_data && chown -R app:app /app
 
 ENV PORT=8080
 USER app
