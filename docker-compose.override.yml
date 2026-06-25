@@ -1,0 +1,36 @@
+# Local development overrides — auto-loaded by `docker compose` alongside
+# docker-compose.yml. It adds source bind-mounts and hot reload.
+#
+# This file is intentionally NOT used in deployment: run
+# `docker compose -f docker-compose.yml up -d --build` (explicit single -f)
+# to ignore it, or set COMPOSE_PROFILES=prod.
+
+services:
+  # Run the Next.js dev server with live reload against mounted source.
+  frontend:
+    build:
+      context: ./frontend
+      target: deps
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      # Keep the image's installed deps / build cache (don't let the bind
+      # mount shadow them with the host's empty dirs).
+      - /app/node_modules
+      - /app/.next
+    # The dev server has no production healthcheck endpoint contract; skip it
+    # so dependents aren't blocked while it compiles on first request.
+    healthcheck:
+      disable: true
+
+  # Run the Go API with `go run` against mounted source.
+  backend:
+    build:
+      context: ./backend
+      target: builder
+    command: go run .
+    working_dir: /src
+    volumes:
+      - ./backend:/src

@@ -1,0 +1,88 @@
+# Kreach monorepo — production-shaped orchestration.
+#
+# Three independent services:
+#   frontend   (Next.js)    -> http://localhost:3000
+#   backend    (Go API)     -> http://localhost:8080
+#   pocketbase (BaaS)        -> http://localhost:8090  (admin UI at /_/)
+#
+# Local dev: `docker compose up --build` also loads docker-compose.override.yml
+#            automatically (hot reload + bind mounts).
+# Deploy:    `docker compose -f docker-compose.yml up -d --build`
+#            (the explicit -f skips the dev override).
+
+services:
+  pocketbase:
+    build:
+      context: ./pocketbase
+      args:
+        PB_VERSION: ${PB_VERSION:-0.22.21}
+        PB_ARCH: ${PB_ARCH:-amd64}
+    image: kreach-pocketbase
+    restart: unless-stopped
+    ports:
+      - "${POCKETBASE_PORT:-8090}:8090"
+    volumes:
+      - pb_data:/pb/pb_data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kreach
+    profiles: ["prod", "dev"]
+
+  backend:
+    build:
+      context: ./backend
+    image: kreach-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      POCKETBASE_URL: "http://pocketbase:8090"
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - kreach
+    profiles: ["prod", "dev"]
+
+  frontend:
+    build:
+      context: ./frontend
+    image: kreach-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:8080}"
+      NEXT_PUBLIC_POCKETBASE_URL: "${NEXT_PUBLIC_POCKETBASE_URL:-http://localhost:8090}"
+    depends_on:
+      backend:
+        condition: service_healthy
+      pocketbase:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - kreach
+    profiles: ["prod", "dev"]
+
+volumes:
+  pb_data:
+
+networks:
+  kreach:
