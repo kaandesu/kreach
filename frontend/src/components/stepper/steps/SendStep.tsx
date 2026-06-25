@@ -53,11 +53,13 @@ export function SendStep({
         responses.push(
           await sendEmails({
             projectId: project.id,
-            templateId: template.id,
+            template,
             resendApiKey: resendKey,
             recipients,
-            fromName: fromName || undefined,
-            fromEmail: fromEmail || undefined,
+            fromEmail:
+              fromName && fromEmail
+                ? `${fromName} <${fromEmail}>`
+                : fromEmail || undefined,
           }),
         );
       }

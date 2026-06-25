@@ -28,14 +28,21 @@ const (
 
 // Project fields.
 const (
-	FieldProjectDescription = "description"
+	FieldProjectDescription      = "description"
+	FieldProjectEmails           = "emails"
+	FieldProjectBrandingNotes    = "branding_notes"
+	FieldProjectResendConfigured = "resend_configured"
+	FieldProjectStatus           = "status"
 )
 
 // Template fields.
 const (
-	FieldTemplateSubject = "subject"
-	FieldTemplateBody    = "body"
-	FieldTemplateProject = "project" // relation -> projects (optional)
+	FieldTemplateSubject  = "subject"
+	FieldTemplateBody     = "html"
+	FieldTemplateProject  = "project" // relation -> projects (optional)
+	FieldTemplateModel    = "model"
+	FieldTemplatePrompt   = "prompt"
+	FieldTemplateSelected = "selected"
 )
 
 // SendLog fields.

@@ -1,0 +1,38 @@
+# Local development overrides — auto-loaded by `docker compose` alongside
+# docker-compose.yml. It adds source bind-mounts and hot reload.
+#
+# This file is intentionally NOT used in deployment: run
+# `docker compose -f docker-compose.yml up -d --build` (explicit single -f)
+# to ignore it, or set COMPOSE_PROFILES=prod.
+
+services:
+  # Run the Vite dev server with live reload against mounted source.
+  frontend:
+    build:
+      context: ./frontend
+      target: deps
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+    environment:
+      NODE_ENV: development
+      VITE_PB_URL: "${VITE_PB_URL:-http://localhost:8080}"
+      VITE_SEND_ROUTE: "${VITE_SEND_ROUTE:-/api/emails/send}"
+    volumes:
+      - ./frontend:/app
+      # Keep the image's installed deps / build cache (don't let the bind
+      # mount shadow them with the host's empty dirs).
+      - /app/node_modules
+    # The dev server has no production healthcheck endpoint contract; skip it
+    # so dependents aren't blocked while it compiles on first request.
+    healthcheck:
+      disable: true
+
+  # Run the Go API with `go run` against mounted source.
+  backend:
+    build:
+      context: ./backend
+      target: builder
+    command: go run . serve --http=0.0.0.0:8080
+    working_dir: /src
+    volumes:
+      - ./backend:/src
+      - pb_data:/src/pb_data

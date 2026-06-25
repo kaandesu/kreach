@@ -45,6 +45,15 @@ func up(app core.App) error {
 	// create/update/delete left nil => superuser-only; handled by the API.
 	projects.Fields.Add(&core.TextField{Name: collections.FieldName, Required: true, Max: 255})
 	projects.Fields.Add(&core.TextField{Name: collections.FieldProjectDescription, Max: 2000})
+	projects.Fields.Add(&core.EditorField{Name: collections.FieldProjectEmails})
+	projects.Fields.Add(&core.EditorField{Name: collections.FieldProjectBrandingNotes})
+	projects.Fields.Add(&core.BoolField{Name: collections.FieldProjectResendConfigured})
+	projects.Fields.Add(&core.SelectField{
+		Name:      collections.FieldProjectStatus,
+		Required:  true,
+		MaxSelect: 1,
+		Values:    []string{"draft", "generating", "ready", "sending", "sent"},
+	})
 	projects.Fields.Add(&core.RelationField{
 		Name:          collections.FieldOwner,
 		Required:      true,
@@ -66,6 +75,9 @@ func up(app core.App) error {
 	templates.Fields.Add(&core.TextField{Name: collections.FieldName, Required: true, Max: 255})
 	templates.Fields.Add(&core.TextField{Name: collections.FieldTemplateSubject, Max: 500})
 	templates.Fields.Add(&core.EditorField{Name: collections.FieldTemplateBody, Required: true})
+	templates.Fields.Add(&core.TextField{Name: collections.FieldTemplateModel, Max: 255})
+	templates.Fields.Add(&core.EditorField{Name: collections.FieldTemplatePrompt})
+	templates.Fields.Add(&core.BoolField{Name: collections.FieldTemplateSelected})
 	templates.Fields.Add(&core.RelationField{
 		Name:          collections.FieldOwner,
 		Required:      true,

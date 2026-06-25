@@ -9,7 +9,7 @@ journey: auth → project management → AI template generation → preview → 
 - **Tailwind CSS + shadcn/ui** for all forms, modals, tables, and surfaces
 - **reactbits.dev**-style animated surfaces (`src/components/reactbits`)
 - **React Router v6** with auth-protected routes
-- **PocketBase JS SDK** for authentication and all data
+- **PocketBase JS SDK** for authentication and authenticated API requests
 - **TanStack Query** for fetching/caching/mutations
 - **OpenAI JS SDK** (in-browser) for template generation
 - **react-hook-form + zod** for forms
@@ -18,7 +18,7 @@ journey: auth → project management → AI template generation → preview → 
 
 ```bash
 npm install
-cp .env.example .env      # point VITE_PB_URL at your PocketBase instance
+cp .env.example .env      # point VITE_PB_URL at the Go/PocketBase backend
 npm run dev               # http://localhost:5173
 ```
 
@@ -28,8 +28,8 @@ Scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run preview`.
 
 | Var | Default | Purpose |
 | --- | --- | --- |
-| `VITE_PB_URL` | `http://127.0.0.1:8090` | PocketBase base URL (auth + data) |
-| `VITE_SEND_ROUTE` | `/api/kreach/send` | Backend custom route that performs delivery |
+| `VITE_PB_URL` | `http://127.0.0.1:8080` | Go/PocketBase backend URL |
+| `VITE_SEND_ROUTE` | `/api/emails/send` | Backend custom route that performs delivery |
 
 ## API keys are client-only
 
@@ -47,7 +47,7 @@ backend:
 src/
   lib/         pocketbase singleton, in-browser OpenAI generation, utils
   types/       domain types mirroring the PocketBase collections
-  api/         thin PB wrappers: projects, templates, logs, send
+  api/         backend route wrappers: projects, templates, logs, send
   hooks/       TanStack Query hooks + useApiKeys
   context/     AuthContext (wraps pb.authStore)
   routes/      ProtectedRoute guard
@@ -67,28 +67,25 @@ single place to reconcile if the backend's path/shape changes.
 
 ## Assumed backend contract (for the backend slice)
 
-Built against PocketBase collections (the backend agent owns the migrations):
+Built against the Go backend's authenticated `/api/*` routes:
 
 - **`users`** — PocketBase auth collection (email/password).
-- **`projects`** — `user` (relation, owner), `name`, `description`, `emails`
-  (text blob), `branding_notes` (text), `resend_configured` (bool), `status`
-  (`draft|generating|ready|sending|sent`). List/view rules scoped to `user`.
+- **`projects`** — `owner` (relation), `name`, `description`, `emails`,
+  `branding_notes`, `resend_configured`, `status`.
 - **`templates`** — `project` (relation), `name`, `subject`, `html` (text),
   `model`, `prompt`, `selected` (bool).
-- **`logs`** — `project` (relation), `template` (relation), `recipient`,
-  `status` (`sent|failed|queued`), `error`, `sent_at`.
+- **`send_logs`** — `project` (relation), `template` (relation), `recipient`,
+  `subject`, `status` (`sent|failed|queued`), `error`, `provider_id`.
 
 Custom send route — `POST {VITE_SEND_ROUTE}`:
 
 ```jsonc
 // request
-{ "projectId": "...", "templateId": "...", "resendApiKey": "re_...",
-  "recipients": ["a@x.com"], "fromName": "...", "fromEmail": "..." }
+{ "to": "a@x.com", "subject": "...", "html": "...",
+  "resend_api_key": "re_...", "template": "...", "project": "..." }
 // response
-{ "results": [{ "recipient": "a@x.com", "status": "sent" }],
-  "sent": 1, "failed": 0 }
+{ "status": "sent", "provider_id": "...", "send_log": "..." }
 ```
 
-The backend uses the supplied Resend key to deliver and writes a `logs` row per
-recipient; the key is not persisted. Realtime subscriptions on `logs` drive the
-live logs view.
+The frontend sends recipients sequentially and aggregates the per-recipient
+responses for the wizard UI. The Resend key is not persisted.

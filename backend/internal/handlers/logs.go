@@ -19,6 +19,10 @@ func (h *Handlers) ListSendLogs(e *core.RequestEvent) error {
 		filter += " && " + collections.FieldSendRecipient + " = {:recipient}"
 		params["recipient"] = strings.ToLower(recipient)
 	}
+	if project := strings.TrimSpace(e.Request.URL.Query().Get("project")); project != "" {
+		filter += " && " + collections.FieldSendProject + " = {:project}"
+		params["project"] = project
+	}
 
 	records, err := h.App.FindRecordsByFilter(
 		collections.SendLogs,
@@ -42,6 +46,10 @@ func (h *Handlers) ListAuditLogs(e *core.RequestEvent) error {
 	if recipient := strings.TrimSpace(e.Request.URL.Query().Get("recipient")); recipient != "" {
 		filter += " && " + collections.FieldAuditRecipient + " = {:recipient}"
 		params["recipient"] = strings.ToLower(recipient)
+	}
+	if project := strings.TrimSpace(e.Request.URL.Query().Get("project")); project != "" {
+		filter += " && " + collections.FieldAuditResource + " = {:project}"
+		params["project"] = project
 	}
 
 	records, err := h.App.FindRecordsByFilter(

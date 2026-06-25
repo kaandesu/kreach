@@ -1,14 +1,12 @@
 import { pb } from "@/lib/pocketbase";
 import type { Project } from "@/types";
 
-const collection = () => pb.collection("projects");
-
 export async function listProjects(): Promise<Project[]> {
-  return collection().getFullList<Project>({ sort: "-updated" });
+  return pb.send<Project[]>("/api/projects", { method: "GET" });
 }
 
 export async function getProject(id: string): Promise<Project> {
-  return collection().getOne<Project>(id);
+  return pb.send<Project>(`/api/projects/${id}`, { method: "GET" });
 }
 
 export type ProjectInput = Partial<
@@ -24,11 +22,12 @@ export type ProjectInput = Partial<
 >;
 
 export async function createProject(data: ProjectInput): Promise<Project> {
-  // Attach the owning user so list/view rules can scope to the current account.
-  return collection().create<Project>({
-    ...data,
-    status: data.status ?? "draft",
-    user: pb.authStore.model?.id,
+  return pb.send<Project>("/api/projects", {
+    method: "POST",
+    body: {
+      ...data,
+      status: data.status ?? "draft",
+    },
   });
 }
 
@@ -36,9 +35,13 @@ export async function updateProject(
   id: string,
   data: ProjectInput,
 ): Promise<Project> {
-  return collection().update<Project>(id, data);
+  return pb.send<Project>(`/api/projects/${id}`, {
+    method: "PATCH",
+    body: data,
+  });
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
-  return collection().delete(id);
+  await pb.send(`/api/projects/${id}`, { method: "DELETE" });
+  return true;
 }

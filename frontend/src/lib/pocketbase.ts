@@ -3,7 +3,7 @@ import PocketBase from "pocketbase";
 /** PocketBase base URL, configured per-environment. Falls back to the default
  *  local dev port used by `pocketbase serve`. */
 export const PB_URL =
-  import.meta.env.VITE_PB_URL ?? "http://127.0.0.1:8090";
+  import.meta.env.VITE_PB_URL ?? "http://127.0.0.1:8080";
 
 /** Single shared PocketBase client. Import this everywhere — never construct a
  *  second instance, or the auth store / realtime connection will desync. */

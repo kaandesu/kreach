@@ -10,20 +10,31 @@ import (
 )
 
 type templateRequest struct {
-	Name    string `json:"name"`
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-	Project string `json:"project"` // optional project id
+	Name     *string `json:"name"`
+	Subject  *string `json:"subject"`
+	Body     *string `json:"body"`
+	HTML     *string `json:"html"`
+	Project  *string `json:"project"` // optional project id
+	Model    *string `json:"model"`
+	Prompt   *string `json:"prompt"`
+	Selected *bool   `json:"selected"`
 }
 
 // ListTemplates returns the authenticated user's templates, newest first.
 func (h *Handlers) ListTemplates(e *core.RequestEvent) error {
+	filter := collections.FieldOwner + " = {:owner}"
+	params := dbx.Params{"owner": e.Auth.Id}
+	if project := strings.TrimSpace(e.Request.URL.Query().Get("project")); project != "" {
+		filter += " && " + collections.FieldTemplateProject + " = {:project}"
+		params["project"] = project
+	}
+
 	records, err := h.App.FindRecordsByFilter(
 		collections.Templates,
-		collections.FieldOwner+" = {:owner}",
+		filter,
 		"-"+collections.FieldCreated,
 		200, 0,
-		dbx.Params{"owner": e.Auth.Id},
+		params,
 	)
 	if err != nil {
 		return e.InternalServerError("failed to list templates", err)
@@ -37,10 +48,18 @@ func (h *Handlers) CreateTemplate(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("invalid request body", err)
 	}
-	if strings.TrimSpace(body.Name) == "" || strings.TrimSpace(body.Body) == "" {
-		return e.BadRequestError("name and body are required", nil)
+	html := body.HTML
+	if html == nil {
+		html = body.Body
 	}
-	if err := h.validateOwnedProject(e, body.Project); err != nil {
+	if body.Name == nil || strings.TrimSpace(*body.Name) == "" || html == nil || strings.TrimSpace(*html) == "" {
+		return e.BadRequestError("name and html are required", nil)
+	}
+	project := ""
+	if body.Project != nil {
+		project = *body.Project
+	}
+	if err := h.validateOwnedProject(e, project); err != nil {
 		return err
 	}
 
@@ -50,12 +69,23 @@ func (h *Handlers) CreateTemplate(e *core.RequestEvent) error {
 	}
 
 	rec := core.NewRecord(col)
-	rec.Set(collections.FieldName, body.Name)
-	rec.Set(collections.FieldTemplateSubject, body.Subject)
-	rec.Set(collections.FieldTemplateBody, body.Body)
+	rec.Set(collections.FieldName, *body.Name)
+	if body.Subject != nil {
+		rec.Set(collections.FieldTemplateSubject, *body.Subject)
+	}
+	rec.Set(collections.FieldTemplateBody, *html)
 	rec.Set(collections.FieldOwner, e.Auth.Id)
-	if body.Project != "" {
-		rec.Set(collections.FieldTemplateProject, body.Project)
+	if project != "" {
+		rec.Set(collections.FieldTemplateProject, project)
+	}
+	if body.Model != nil {
+		rec.Set(collections.FieldTemplateModel, *body.Model)
+	}
+	if body.Prompt != nil {
+		rec.Set(collections.FieldTemplatePrompt, *body.Prompt)
+	}
+	if body.Selected != nil {
+		rec.Set(collections.FieldTemplateSelected, *body.Selected)
 	}
 
 	if err := h.App.Save(rec); err != nil {
@@ -86,18 +116,37 @@ func (h *Handlers) UpdateTemplate(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("invalid request body", err)
 	}
-	if err := h.validateOwnedProject(e, body.Project); err != nil {
-		return err
+	if body.Project != nil {
+		if err := h.validateOwnedProject(e, *body.Project); err != nil {
+			return err
+		}
 	}
 
-	if body.Name != "" {
-		rec.Set(collections.FieldName, body.Name)
+	if body.Name != nil && *body.Name != "" {
+		rec.Set(collections.FieldName, *body.Name)
 	}
-	rec.Set(collections.FieldTemplateSubject, body.Subject)
-	if body.Body != "" {
-		rec.Set(collections.FieldTemplateBody, body.Body)
+	if body.Subject != nil {
+		rec.Set(collections.FieldTemplateSubject, *body.Subject)
 	}
-	rec.Set(collections.FieldTemplateProject, body.Project)
+	html := body.HTML
+	if html == nil {
+		html = body.Body
+	}
+	if html != nil && *html != "" {
+		rec.Set(collections.FieldTemplateBody, *html)
+	}
+	if body.Project != nil {
+		rec.Set(collections.FieldTemplateProject, *body.Project)
+	}
+	if body.Model != nil {
+		rec.Set(collections.FieldTemplateModel, *body.Model)
+	}
+	if body.Prompt != nil {
+		rec.Set(collections.FieldTemplatePrompt, *body.Prompt)
+	}
+	if body.Selected != nil {
+		rec.Set(collections.FieldTemplateSelected, *body.Selected)
+	}
 
 	if err := h.App.Save(rec); err != nil {
 		return e.BadRequestError("failed to update template", err)

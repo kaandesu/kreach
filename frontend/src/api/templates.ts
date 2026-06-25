@@ -1,13 +1,9 @@
 import { pb } from "@/lib/pocketbase";
 import type { GeneratedTemplate, Template } from "@/types";
 
-const collection = () => pb.collection("templates");
-
 export async function listTemplates(projectId: string): Promise<Template[]> {
-  return collection().getFullList<Template>({
-    filter: pb.filter("project = {:project}", { project: projectId }),
-    sort: "created",
-  });
+  const query = new URLSearchParams({ project: projectId });
+  return pb.send<Template[]>(`/api/templates?${query}`, { method: "GET" });
 }
 
 /** Persist a batch of in-browser generated candidates to a project. */
@@ -17,14 +13,17 @@ export async function storeTemplates(
 ): Promise<Template[]> {
   const created = await Promise.all(
     generated.map((g) =>
-      collection().create<Template>({
-        project: projectId,
-        name: g.name,
-        subject: g.subject,
-        html: g.html,
-        model: g.model,
-        prompt: g.prompt,
-        selected: false,
+      pb.send<Template>("/api/templates", {
+        method: "POST",
+        body: {
+          project: projectId,
+          name: g.name,
+          subject: g.subject,
+          html: g.html,
+          model: g.model,
+          prompt: g.prompt,
+          selected: false,
+        },
       }),
     ),
   );
@@ -35,16 +34,20 @@ export async function updateTemplate(
   id: string,
   data: Partial<Pick<Template, "name" | "subject" | "html" | "selected">>,
 ): Promise<Template> {
-  return collection().update<Template>(id, data);
+  return pb.send<Template>(`/api/templates/${id}`, {
+    method: "PATCH",
+    body: data,
+  });
 }
 
 export async function setSelected(
   id: string,
   selected: boolean,
 ): Promise<Template> {
-  return collection().update<Template>(id, { selected });
+  return updateTemplate(id, { selected });
 }
 
 export async function deleteTemplate(id: string): Promise<boolean> {
-  return collection().delete(id);
+  await pb.send(`/api/templates/${id}`, { method: "DELETE" });
+  return true;
 }

@@ -1,5 +1,5 @@
 import { pb } from "@/lib/pocketbase";
-import type { SendResponse } from "@/types";
+import type { SendResponse, Template } from "@/types";
 
 /** Path of the backend custom send route. The backend (separate slice) holds
  *  the Resend call and writes `logs` rows; we only pass the key through at send
@@ -10,10 +10,9 @@ const SEND_ROUTE =
 
 export interface SendEmailsParams {
   projectId: string;
-  templateId: string;
+  template: Template;
   resendApiKey: string;
   recipients: string[];
-  fromName?: string;
   fromEmail?: string;
 }
 
@@ -25,15 +24,34 @@ export interface SendEmailsParams {
 export async function sendEmails(
   params: SendEmailsParams,
 ): Promise<SendResponse> {
-  return pb.send<SendResponse>(SEND_ROUTE, {
-    method: "POST",
-    body: {
-      projectId: params.projectId,
-      templateId: params.templateId,
-      resendApiKey: params.resendApiKey,
-      recipients: params.recipients,
-      fromName: params.fromName,
-      fromEmail: params.fromEmail,
-    },
-  });
+  const results: SendResponse["results"] = [];
+  for (const recipient of params.recipients) {
+    try {
+      await pb.send(SEND_ROUTE, {
+        method: "POST",
+        body: {
+          to: recipient,
+          subject: params.template.subject,
+          html: params.template.html,
+          resend_api_key: params.resendApiKey,
+          from: params.fromEmail,
+          template: params.template.id,
+          project: params.projectId,
+        },
+      });
+      results.push({ recipient, status: "sent" as const });
+    } catch (err) {
+      results.push({
+        recipient,
+        status: "failed" as const,
+        error: err instanceof Error ? err.message : "Send failed",
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }
+  return {
+    results,
+    sent: results.filter((r) => r.status === "sent").length,
+    failed: results.filter((r) => r.status === "failed").length,
+  };
 }

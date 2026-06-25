@@ -10,8 +10,12 @@ import (
 )
 
 type projectRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name             *string `json:"name"`
+	Description      *string `json:"description"`
+	Emails           *string `json:"emails"`
+	BrandingNotes    *string `json:"branding_notes"`
+	ResendConfigured *bool   `json:"resend_configured"`
+	Status           *string `json:"status"`
 }
 
 // ListProjects returns the authenticated user's projects, newest first.
@@ -35,7 +39,7 @@ func (h *Handlers) CreateProject(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("invalid request body", err)
 	}
-	if strings.TrimSpace(body.Name) == "" {
+	if body.Name == nil || strings.TrimSpace(*body.Name) == "" {
 		return e.BadRequestError("name is required", nil)
 	}
 
@@ -45,8 +49,24 @@ func (h *Handlers) CreateProject(e *core.RequestEvent) error {
 	}
 
 	rec := core.NewRecord(col)
-	rec.Set(collections.FieldName, body.Name)
-	rec.Set(collections.FieldProjectDescription, body.Description)
+	rec.Set(collections.FieldName, *body.Name)
+	if body.Description != nil {
+		rec.Set(collections.FieldProjectDescription, *body.Description)
+	}
+	if body.Emails != nil {
+		rec.Set(collections.FieldProjectEmails, *body.Emails)
+	}
+	if body.BrandingNotes != nil {
+		rec.Set(collections.FieldProjectBrandingNotes, *body.BrandingNotes)
+	}
+	if body.ResendConfigured != nil {
+		rec.Set(collections.FieldProjectResendConfigured, *body.ResendConfigured)
+	}
+	status := "draft"
+	if body.Status != nil && *body.Status != "" {
+		status = *body.Status
+	}
+	rec.Set(collections.FieldProjectStatus, status)
 	rec.Set(collections.FieldOwner, e.Auth.Id) // ownership is forced server-side
 
 	if err := h.App.Save(rec); err != nil {
@@ -77,10 +97,24 @@ func (h *Handlers) UpdateProject(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("invalid request body", err)
 	}
-	if body.Name != "" {
-		rec.Set(collections.FieldName, body.Name)
+	if body.Name != nil && *body.Name != "" {
+		rec.Set(collections.FieldName, *body.Name)
 	}
-	rec.Set(collections.FieldProjectDescription, body.Description)
+	if body.Description != nil {
+		rec.Set(collections.FieldProjectDescription, *body.Description)
+	}
+	if body.Emails != nil {
+		rec.Set(collections.FieldProjectEmails, *body.Emails)
+	}
+	if body.BrandingNotes != nil {
+		rec.Set(collections.FieldProjectBrandingNotes, *body.BrandingNotes)
+	}
+	if body.ResendConfigured != nil {
+		rec.Set(collections.FieldProjectResendConfigured, *body.ResendConfigured)
+	}
+	if body.Status != nil && *body.Status != "" {
+		rec.Set(collections.FieldProjectStatus, *body.Status)
+	}
 
 	if err := h.App.Save(rec); err != nil {
 		return e.BadRequestError("failed to update project", err)
