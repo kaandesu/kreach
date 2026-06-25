@@ -22,7 +22,7 @@ type sendEmailRequest struct {
 	Subject      string `json:"subject"`
 	HTML         string `json:"html"`
 	ResendAPIKey string `json:"resend_api_key"`
-	From         string `json:"from"`     // optional override of the default sender
+	From         string `json:"from"`
 	Template     string `json:"template"` // optional template id (for logging/relations)
 	Project      string `json:"project"`  // optional project id (for logging/relations)
 }
@@ -37,8 +37,12 @@ func (h *Handlers) SendEmail(e *core.RequestEvent) error {
 	}
 
 	body.To = strings.TrimSpace(body.To)
+	body.From = strings.TrimSpace(body.From)
 	if body.To == "" || body.ResendAPIKey == "" {
 		return e.BadRequestError("to and resend_api_key are required", nil)
+	}
+	if body.From == "" {
+		return e.BadRequestError("from is required", nil)
 	}
 	if strings.TrimSpace(body.HTML) == "" {
 		return e.BadRequestError("html body is required", nil)
@@ -79,14 +83,9 @@ func (h *Handlers) SendEmail(e *core.RequestEvent) error {
 		return e.TooManyRequestsError("daily send limit reached (100/day)", nil)
 	}
 
-	from := h.EmailFrom
-	if body.From != "" {
-		from = body.From
-	}
-
 	// ---- deliver via Resend --------------------------------------------
 	providerID, sendErr := email.Send(e.Request.Context(), body.ResendAPIKey, email.Message{
-		From:    from,
+		From:    body.From,
 		To:      body.To,
 		Subject: body.Subject,
 		HTML:    body.HTML,

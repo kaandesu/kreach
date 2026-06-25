@@ -290,13 +290,13 @@ components:
         updated: { type: string }
     SendEmailRequest:
       type: object
-      required: [to, html, resend_api_key]
+      required: [to, html, resend_api_key, from]
       properties:
         to: { type: string, format: email }
         subject: { type: string }
         html: { type: string }
         resend_api_key: { type: string, description: "Used for delivery only; never stored" }
-        from: { type: string, description: "Optional sender override; defaults to RESEND_FROM" }
+        from: { type: string, description: "Verified Resend sender supplied by the user" }
         template: { type: string, description: "Optional owned template id (for logging)" }
         project: { type: string, description: "Optional owned project id (for logging)" }
     SendEmailResponse:

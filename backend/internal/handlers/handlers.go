@@ -15,13 +15,11 @@ import (
 type Handlers struct {
 	App      core.App
 	Throttle *ratelimit.Throttle
-	// EmailFrom is the verified "from" address used for outbound email.
-	EmailFrom string
 }
 
 // New constructs a Handlers value.
-func New(app core.App, throttle *ratelimit.Throttle, emailFrom string) *Handlers {
-	return &Handlers{App: app, Throttle: throttle, EmailFrom: emailFrom}
+func New(app core.App, throttle *ratelimit.Throttle) *Handlers {
+	return &Handlers{App: app, Throttle: throttle}
 }
 
 // audit appends an audit_logs entry. Failures to write the audit trail are

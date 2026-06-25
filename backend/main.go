@@ -12,8 +12,6 @@ package main
 
 import (
 	"log"
-	"os"
-	"strings"
 
 	"github.com/kreach/backend/internal/handlers"
 	"github.com/kreach/backend/internal/ratelimit"
@@ -28,10 +26,6 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 )
 
-// defaultEmailFrom is used when RESEND_FROM is not set. Resend's onboarding
-// sender works out of the box for testing.
-const defaultEmailFrom = "onboarding@resend.dev"
-
 func main() {
 	app := pocketbase.New()
 
@@ -42,12 +36,7 @@ func main() {
 		Automigrate:  true,
 	})
 
-	emailFrom := strings.TrimSpace(os.Getenv("RESEND_FROM"))
-	if emailFrom == "" {
-		emailFrom = defaultEmailFrom
-	}
-
-	h := handlers.New(app, ratelimit.New(), emailFrom)
+	h := handlers.New(app, ratelimit.New())
 
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
 		routes.Register(se, h)

@@ -82,7 +82,8 @@ Custom send route — `POST {VITE_SEND_ROUTE}`:
 ```jsonc
 // request
 { "to": "a@x.com", "subject": "...", "html": "...",
-  "resend_api_key": "re_...", "template": "...", "project": "..." }
+  "resend_api_key": "re_...", "from": "Sender <sender@example.com>",
+  "template": "...", "project": "..." }
 // response
 { "status": "sent", "provider_id": "...", "send_log": "..." }
 ```

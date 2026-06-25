@@ -6,14 +6,14 @@ import type { SendResponse, Template } from "@/types";
  *  time — it is never persisted on the backend. Override via env if the backend
  *  settles on a different path. */
 const SEND_ROUTE =
-  import.meta.env.VITE_SEND_ROUTE ?? "/api/kreach/send";
+  import.meta.env.VITE_SEND_ROUTE ?? "/api/emails/send";
 
 export interface SendEmailsParams {
   projectId: string;
   template: Template;
   resendApiKey: string;
   recipients: string[];
-  fromEmail?: string;
+  fromEmail: string;
 }
 
 /**

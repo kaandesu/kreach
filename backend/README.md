@@ -34,8 +34,6 @@ another user's data. The superuser dashboard remains available at `/_/`.
 ## Requirements
 
 - Go 1.24+
-- (optional) `RESEND_FROM` — verified sender address. Defaults to
-  `onboarding@resend.dev`.
 
 ## Run
 
@@ -164,6 +162,7 @@ curl -X POST http://127.0.0.1:8090/api/emails/send \
         "subject": "Hey",
         "html": "<p>Hello!</p>",
         "resend_api_key": "re_your_key_here",
+        "from": "Ada from Acme <ada@acme.com>",
         "template": "optional_template_id",
         "project": "optional_project_id"
       }'

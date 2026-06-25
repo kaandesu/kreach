@@ -31,6 +31,9 @@ export function SendStep({
 
   const [fromName, setFromName] = useState("");
   const [fromEmail, setFromEmail] = useState("");
+  const sender = fromName.trim() && fromEmail.trim()
+    ? `${fromName.trim()} <${fromEmail.trim()}>`
+    : fromEmail.trim();
 
   const recipients = useMemo(
     () => parseEmails(project.emails ?? ""),
@@ -56,10 +59,7 @@ export function SendStep({
             template,
             resendApiKey: resendKey,
             recipients,
-            fromEmail:
-              fromName && fromEmail
-                ? `${fromName} <${fromEmail}>`
-                : fromEmail || undefined,
+            fromEmail: sender,
           }),
         );
       }
@@ -84,7 +84,11 @@ export function SendStep({
     },
   });
 
-  const blocked = !hasResendKey || selected.length === 0 || recipients.length === 0;
+  const blocked =
+    !hasResendKey ||
+    selected.length === 0 ||
+    recipients.length === 0 ||
+    !fromEmail.trim();
 
   return (
     <StepShell
@@ -134,7 +138,7 @@ export function SendStep({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="from-email">From email (optional)</Label>
+          <Label htmlFor="from-email">From email</Label>
           <Input
             id="from-email"
             type="email"
@@ -156,6 +160,12 @@ export function SendStep({
         <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           No valid recipients — add some in the Audience step.
+        </div>
+      )}
+      {!fromEmail.trim() && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Enter the verified Resend sender email for this send.
         </div>
       )}
     </StepShell>
